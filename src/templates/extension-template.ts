@@ -1,4 +1,4 @@
-import { CEP_Extended_Panel } from "../cep-config";
+import type { CEP_Extended_Panel } from "../cep-config";
 
 export const extensionTemplate = ({
   id,
@@ -19,7 +19,8 @@ export const extensionTemplate = ({
   iconNormalRollOver,
   iconDarkNormalRollOver,
   scriptPath,
-}: CEP_Extended_Panel) => `<Extension Id="${id}.${name}">
+  startOnEvents,
+}: CEP_Extended_Panel) => `<Extension Id="${id}">
 <DispatchInfo>
   <Resources>
     <MainPath>${mainPath}</MainPath>${
@@ -32,6 +33,12 @@ export const extensionTemplate = ({
   </Resources>
   <Lifecycle>
     <AutoVisible>${autoVisible}</AutoVisible>
+    ${
+      startOnEvents &&
+      `<StartOn>${startOnEvents
+        .map((event) => `<Event>${event}</Event>`)
+        .join("\n")}</StartOn>`
+    } 
   </Lifecycle>
   <UI>
     <Type>${type}</Type>

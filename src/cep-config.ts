@@ -37,14 +37,20 @@ type CEF_Command =
   | "--disable-application-cache"
   | "--enable-nodejs"
   | "--disable-pinch"
-  | "--mixed-context";
+  | "--mixed-context"
+  | "--v=0"
+  | "--v=1"
+  | "--v=2"
+  | "--v=3"
+  | "--v=4"
+  | "--v=5";
 
 type CEP_Panel_Type = "Panel" | "ModalDialog" | "Modeless" | "Custom";
 
 export interface CEP_Panel {
   mainPath: string;
   name: string;
-  panelDisplayName: string;
+  panelDisplayName?: string | null;
   autoVisible: boolean;
   width?: number;
   height?: number;
@@ -53,18 +59,20 @@ export interface CEP_Panel {
   minWidth?: number;
   minHeight?: number;
   scriptPath?: string;
-}
-
-export interface CEP_Extended_Panel extends CEP_Panel {
-  id: string;
+  type?: CEP_Panel_Type;
+  id?: string;
   iconDarkNormal?: string;
   iconNormal?: string;
   iconDarkNormalRollOver?: string;
   iconNormalRollOver?: string;
+  parameters?: CEF_Command[];
+  startOnEvents?: string[];
+}
+
+export interface CEP_Extended_Panel extends CEP_Panel {
+  id: string;
   parameters: CEF_Command[];
   type: CEP_Panel_Type;
-  width?: number;
-  height?: number;
 }
 
 export interface CEP_Config {
@@ -109,4 +117,8 @@ export interface CEP_Config {
   };
   installModules?: string[];
   copyAssets?: string[];
+}
+
+export interface CEP_Config_Extended extends CEP_Config {
+  panels: CEP_Extended_Panel[];
 }

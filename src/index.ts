@@ -11,15 +11,23 @@ const prettifyXml = require("prettify-xml");
 
 // import { requirejs } from "./lib/require-js";
 
-import { log, conColors, posix, resetLog } from "./lib/lib";
+import {
+  log,
+  conColors,
+  posix,
+  resetLog,
+  fixAssetPathCSS,
+  fixAssetPathJS,
+  fixAssetPathHTML,
+  removeModuleTags,
+} from "./lib/lib";
 import { signZXP } from "./lib/zxp";
 import { manifestTemplate } from "./templates/manifest-template";
 import { debugTemplate } from "./templates/debug-template";
 import { devHtmlTemplate } from "./templates/dev-html-template";
-import { htmlTemplate } from "./templates/html-template";
-import { ResolvedConfig } from "vite";
+import type { HtmlTagDescriptor, ResolvedConfig } from "vite";
 import { menuHtmlTemplate } from "./templates/menu-html-template";
-import { CEP_Config, JSXBIN_MODE } from "./cep-config";
+import { CEP_Config, CEP_Config_Extended, JSXBIN_MODE } from "./cep-config";
 // export { CEP_Config } from "./cep-config";
 export type { CEP_Config };
 import { nodeBuiltIns } from "./lib/node-built-ins";
@@ -41,14 +49,58 @@ const ccLocalExtensionFolder =
 
 const makeSymlink = (dist: string, dest: string) => {
   try {
-    if (fs.existsSync(dest)) {
-      fs.unlinkSync(dest);
+    if (symlinkExists(dest)) {
+      if (path.resolve(fs.readlinkSync(dest)) === path.resolve(dist)) {
+        log("symlink already exists", true);
+        return "exists";
+      } else {
+        // incorrect link, remove and re-create
+        fs.unlinkSync(dest);
+      }
     }
     fs.symlinkSync(dist, dest, "junction");
-    return [true, dest];
+    log("symlink created", true);
+    return "created";
   } catch (e) {
-    return [false, e];
+    log("symlink failed. Try running 'sudo yarn symlink'", false);
+    return "error";
   }
+};
+
+const removeSymlink = (dist: string, dest: string) => {
+  try {
+    if (symlinkExists(dest)) {
+      fs.unlinkSync(dest);
+      log("symlink removed successfully", true);
+      return "removed";
+    } else {
+      log("no symlink exists", true);
+      return "none";
+    }
+  } catch (e) {
+    log(
+      "symlink removal failed. Try removing with 'sudo yarn delsymlink'",
+      false
+    );
+    return "error";
+  }
+};
+
+const symlinkExists = (dir: string) => {
+  let exists, readlink, lstat;
+  // try {
+  //   exists = fs.existsSync(dir);
+  // } catch (e) {}
+  // try {
+  //   readlink = fs.readlinkSync(dir);
+  // } catch (e) {}
+  try {
+    lstat = fs.lstatSync(dir);
+    exists = true;
+  } catch (e) {
+    exists = false;
+  }
+  return exists;
 };
 
 const injectRequire = fs.readFileSync(
@@ -102,10 +154,29 @@ export const cep = (opts: CepOptions) => {
   return {
     name: "cep",
     transformIndexHtml(code: string, opts: any) {
+      const browserRequireIgnore: HtmlTagDescriptor = {
+        tag: "script",
+        children: injectRequire,
+      };
+
+      if (opts && opts.bundle) {
+        Object.keys(opts.bundle).filter((file) => {
+          if (path.extname(file) === ".css") {
+            let newCode = opts.bundle[file].source;
+            if (newCode) {
+              opts.bundle[file].source = fixAssetPathCSS(newCode);
+            } else {
+              console.log("missing code: ", file);
+            }
+          }
+        });
+      }
+
       // console.log("HTML Transform");
       const isDev = opts.server !== undefined;
       if (isDev) {
-        return code;
+        const tags: HtmlTagDescriptor[] = [browserRequireIgnore];
+        return tags;
       }
       let cssFileNameMatches = code.match(/(href=\".*.css\")/g);
       const cssFileNames =
@@ -154,34 +225,51 @@ export const cep = (opts: CepOptions) => {
           );
         }
       });
-      newCode = newCode.replace(`="./assets`, `="../assets`);
-      newCode = newCode.replace(`="/assets`, `="../assets`);
+      newCode = newCode.replace(
+        `"use strict"`,
+        `"use strict"\rif (typeof exports === 'undefined') { var exports = {}; }`
+      );
       opts.bundle[jsName].code = newCode;
 
-      const sharedBundle = Object.keys(opts.bundle).find(
-        (key) => key.includes("jsx-runtime") && key.includes(".js")
-      );
-      if (sharedBundle && opts.bundle[sharedBundle]) {
-        opts.bundle[sharedBundle].code = opts.bundle[sharedBundle].code
-          .replace(`="./assets`, `="../assets`)
-          .replace(`="/assets`, `="../assets`);
+      Object.keys(opts.bundle).map((key) => {
+        if (path.extname(key) === ".js") {
+          let { code, source } = opts.bundle[key];
+          if (code && code.replace) {
+            opts.bundle[key].code = fixAssetPathJS(code);
+          } else if (source && source.replace) {
+            opts.bundle[key].source = fixAssetPathJS(source);
+          } else {
+            console.log("missing code and source: ", opts.bundle[key]);
+          }
+        }
+      });
+
+      const tags: HtmlTagDescriptor[] = [
+        browserRequireIgnore,
+        {
+          tag: "script",
+          attrs: { src: `..${jsFileName}` },
+          injectTo: "body",
+        },
+      ];
+
+      code = removeModuleTags(code);
+      code = fixAssetPathHTML(code);
+
+      if (debugReact) {
+        tags.push({
+          tag: "script",
+          attrs: { src: "http://localhost:8097" },
+          injectTo: "body",
+        });
       }
 
-      const html = htmlTemplate({
-        ...cepConfig,
-        debugReact,
-        //@ts-ignore
-        jsFileName,
-        //@ts-ignore
-        cssFileNames,
-        injectRequire,
-      });
-      return html;
+      return {
+        tags,
+        html: code,
+      };
     },
-    // configureServer(server, extra) {
-    //   console.log(server);
-    //   // return extra;
-    // },
+
     configResolved(config: ResolvedConfig | any) {
       if (!isProduction) {
         console.clear();
@@ -230,32 +318,55 @@ export const cep = (opts: CepOptions) => {
         });
       }
 
-      console.log("FINISH");
+      // console.log("FINISH");
       if (isPackage) {
         return signZXP(cepConfig, path.join(dir, cepDist), zxpDir, tmpDir);
       }
     },
     async generateBundle(output: any, bundle: any) {
-      const jsFileName = Object.keys(bundle).find(
-        (key) => key.split(".").pop() === "js"
-      );
-
-      // fix paths
-      //@ts-ignore
-      bundle[jsFileName].code = bundle[jsFileName].code.replace(
-        /(\/assets\/)/g,
-        "./assets/"
-      );
-
       console.log(
         `${conColors.green}cep process: ${
           (isPackage && "zxp package") || (isProduction && "build") || "dev"
         }`
       );
 
+      // Fill any empty panel fields with extension's defaults
+      const fillPanelFields = (config: CEP_Config) => {
+        let newConfig: CEP_Config_Extended = {
+          ...config,
+          panels: config.panels.map((panel) => {
+            let newProps: any = { ...config, ...panel };
+            return {
+              id: panel.id ? panel.id : `${config.id}.${panel.name}`,
+              name: newProps.name,
+              parameters: newProps.parameters,
+              autoVisible: newProps.autoVisible,
+              mainPath: newProps.mainPath,
+              type: newProps.type,
+              panelDisplayName: newProps.panelDisplayName,
+              width: newProps.width,
+              height: newProps.height,
+              minWidth: newProps.minWidth,
+              minHeight: newProps.minHeight,
+              maxWidth: newProps.maxWidth,
+              maxHeight: newProps.maxHeight,
+              iconNormal: newProps.iconNormal,
+              iconDarkNormal: newProps.iconDarkNormal,
+              iconNormalRollOver: newProps.iconNormalRollOver,
+              iconDarkNormalRollOver: newProps.iconDarkNormalRollOver,
+              scriptPath: newProps.scriptPath,
+              startOnEvents: newProps.startOnEvents,
+            };
+          }),
+        };
+        return newConfig;
+      };
+
+      const extendedConfig = fillPanelFields(cepConfig);
+
       const manifestFile = {
         type: "asset",
-        source: prettifyXml(manifestTemplate(cepConfig), {
+        source: prettifyXml(manifestTemplate(extendedConfig), {
           indent: 2,
           newline: "\n",
         }),
@@ -287,7 +398,7 @@ export const cep = (opts: CepOptions) => {
       const debugFile = {
         type: "asset",
 
-        source: prettifyXml(debugTemplate(cepConfig)),
+        source: prettifyXml(debugTemplate(extendedConfig)),
         name: "CEP Debug File",
         fileName: path.join(".debug"),
       };
@@ -302,14 +413,8 @@ export const cep = (opts: CepOptions) => {
             : ccLocalExtensionFolder;
         const res = makeSymlink(
           path.join(dir, cepDist),
-
           path.join(symlinkPath, cepConfig.id)
         );
-        if (!res[0]) {
-          log("symlink already exists", true);
-        } else {
-          log("symlink created", true);
-        }
       } catch (e) {
         console.warn(e);
       }
@@ -319,14 +424,34 @@ export const cep = (opts: CepOptions) => {
   };
 };
 
-export const jsxInclude = (): Plugin | any => {
+export const jsxInclude = ({
+  iife,
+  globalThis,
+}: {
+  iife: boolean;
+  globalThis: string;
+}): Plugin | any => {
   const foundIncludes: string[] = [];
   return {
     name: "extendscript-include-resolver",
-    generateBundle: (output: any, bundle: any) => {
-      const esFile = Object.keys(bundle).pop();
-      //@ts-ignore
-      bundle[esFile].code = [...foundIncludes, bundle[esFile].code].join("\r");
+    generateBundle: (
+      output: any,
+      bundle: { [key: string]: { code: string } }
+    ) => {
+      const esFile = Object.keys(bundle).pop() as keyof object;
+      const core = [
+        "// ----- EXTENDSCRIPT INCLUDES ------ //",
+        ...foundIncludes,
+        "// ---------------------------------- //",
+        bundle[esFile].code,
+      ];
+      if (iife) {
+        const banner = `(function (${globalThis}) {`;
+        const footer = "})(this);";
+        bundle[esFile].code = [banner, ...core, footer].join("\r");
+      } else {
+        bundle[esFile].code = core.join("\r");
+      }
     },
     transform: (code: string, id: string) => {
       const s = new MagicString(code);
@@ -340,14 +465,17 @@ export const jsxInclude = (): Plugin | any => {
           if (firstMatch) {
             const relativeDir = firstMatch.replace(/(\"|\')/g, "");
             const filePath = path.join(path.dirname(id), relativeDir);
+            let text = "";
             if (fs.existsSync(filePath)) {
-              const text = fs.readFileSync(filePath, { encoding: "utf-8" });
+              text = fs.readFileSync(filePath, { encoding: "utf-8" });
               foundIncludes.push(text);
             } else {
               console.warn(
                 `WARNING: File cannot be found for include ${match}`
               );
             }
+            // console.log("INDEX :: ", code.indexOf(match));
+            // console.log("CODE :: ", code);
             s.overwrite(
               code.indexOf(match),
               code.indexOf(match) + match.length,
@@ -377,7 +505,119 @@ export const jsxInclude = (): Plugin | any => {
   };
 };
 
-export const jsxBin = (jsxBinMode: JSXBIN_MODE) => {
+interface PonyFillItem {
+  find: string;
+  replace: string;
+  inject: string;
+}
+export const jsxPonyfill = (extraPonyfills?: PonyFillItem[]): Plugin | any => {
+  let usedPonyfills = new Set<PonyFillItem>();
+  let ponyfills: PonyFillItem[] = [
+    {
+      find: "Object.freeze",
+      replace: "__objectFreeze",
+      inject: `function __objectFreeze(obj) { return obj; }`,
+    },
+    {
+      find: "Array.isArray",
+      replace: "__isArray",
+      inject: `function __isArray(arr) { try { return arr instanceof Array; } catch (e) { return false; } };`,
+    },
+  ];
+  if (extraPonyfills) {
+    ponyfills = [...ponyfills, ...extraPonyfills];
+  }
+  return {
+    name: "extendscript-ponyfill-resolver",
+    generateBundle: (
+      output: any,
+      bundle: { [key: string]: { code: string } }
+    ) => {
+      const esFile = Object.keys(bundle).pop() as keyof object;
+
+      let ponyfillStr = [
+        `// ----- EXTENDSCRIPT PONYFILLS -----`,
+        Array.from(usedPonyfills)
+          .map((p) => p.inject)
+          .join("\r"),
+        "// ---------------------------------- //",
+      ].join("\r");
+
+      const core = [ponyfillStr, bundle[esFile].code];
+      bundle[esFile].code = core.join("\r");
+    },
+    renderChunk: (code: string, chunk: any) => {
+      const id = chunk.fileName;
+      const s = new MagicString(code);
+      // console.log("Ponyfill Time");
+
+      ponyfills.map((pony) => {
+        const regexp = new RegExp(pony.find, "g");
+        const gen = code.matchAll(regexp);
+        // console.log("GEN", gen);
+        if (gen) {
+          const matches = [...gen];
+          // console.log("FOUND!", pony.find);
+          matches.map((match) => {
+            usedPonyfills.add(pony);
+            const index = match.index;
+            const length = match[0].length;
+            if (index) {
+              // console.log("REPLACING :: ", index, index + length);
+              s.overwrite(
+                index,
+                index + length,
+                pony.replace
+                // text
+              );
+            }
+          });
+        }
+      });
+
+      return {
+        code: s.toString(),
+        map: s.generateMap({
+          source: id,
+          file: `${id}.map`,
+          includeContent: true,
+        }),
+      };
+    },
+  };
+};
+
+export const runAction = (opts: CepOptions, action: string) => {
+  const {
+    cepConfig,
+    dir,
+    isProduction,
+    isPackage,
+    isServe,
+    debugReact,
+    cepDist,
+    zxpDir,
+    packages,
+  } = opts;
+
+  const symlinkPath =
+    cepConfig.symlink === "global"
+      ? ccGlobalExtensionFolder
+      : ccLocalExtensionFolder;
+  const symlinkSrc = path.join(dir, cepDist);
+  const symlinkDst = path.join(symlinkPath, cepConfig.id);
+
+  if (action === "symlink") {
+    makeSymlink(symlinkSrc, symlinkDst);
+  } else if (action === "delsymlink") {
+    removeSymlink(symlinkSrc, symlinkDst);
+  } else {
+    console.warn(`Unknown Action: ${action}`);
+  }
+  resetLog();
+};
+
+export const jsxBin = (jsxBinMode?: JSXBIN_MODE) => {
   return {
     name: "extendscript-jsxbin",
     generateBundle: async function (output: any, bundle: any) {
