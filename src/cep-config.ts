@@ -14,6 +14,11 @@ type CEP_Host_Name =
   | "AUDT"
   | "DRWV"
   | "KBRG"
+  | "AME"
+  | "MUSE"
+  | "LTRM"
+  | "DEMO"
+  | "BRDG"
   | "RUSH";
 
 type CEP_Host = {
@@ -26,6 +31,8 @@ export type JSXBIN_MODE = "off" | "copy" | "replace";
 type CEF_Command =
   | "--enable-media-stream"
   | "--enable-speech-input"
+  | "--enable-file-cookies"
+  | "--enable-nodejs"
   | "--persist-session-cookies"
   | "--disable-image-loading"
   | "--disable-javascript-open-windows"
@@ -35,9 +42,12 @@ type CEF_Command =
   | "--proxy-auto-detect"
   | "--user-agent"
   | "--disable-application-cache"
-  | "--enable-nodejs"
   | "--disable-pinch"
   | "--mixed-context"
+  | "--allow-file-access"
+  | "--disable-popup-blocking"
+  | "--aggressive-cache-discard"
+  | "--winhttp-proxy-resolver"
   | "--v=0"
   | "--v=1"
   | "--v=2"
@@ -45,7 +55,12 @@ type CEF_Command =
   | "--v=4"
   | "--v=5";
 
-type CEP_Panel_Type = "Panel" | "ModalDialog" | "Modeless" | "Custom";
+type CEP_Panel_Type =
+  | "Panel"
+  | "ModalDialog"
+  | "Modeless"
+  | "Custom"
+  | "Embedded";
 
 export interface CEP_Panel {
   mainPath: string;
@@ -59,6 +74,7 @@ export interface CEP_Panel {
   minWidth?: number;
   minHeight?: number;
   scriptPath?: string;
+  host?: string;
   type?: CEP_Panel_Type;
   id?: string;
   iconDarkNormal?: string;
@@ -99,6 +115,7 @@ export interface CEP_Config {
   maxHeight?: number;
   minWidth?: number;
   minHeight?: number;
+  standalone?: boolean;
 
   panels: CEP_Panel[];
 
@@ -117,6 +134,7 @@ export interface CEP_Config {
   };
   installModules?: string[];
   copyAssets?: string[];
+  copyZipAssets?: string[];
 }
 
 export interface CEP_Config_Extended extends CEP_Config {

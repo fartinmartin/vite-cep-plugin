@@ -32,6 +32,8 @@ import { CEP_Config, CEP_Config_Extended, JSXBIN_MODE } from "./cep-config";
 export type { CEP_Config };
 import { nodeBuiltIns } from "./lib/node-built-ins";
 import MagicString from "magic-string";
+import { metaPackage } from "./lib/zip";
+import { packageSync } from "./lib/package-sync";
 
 const homedir = os.homedir();
 const tmpDir = path.join(__dirname, ".tmp");
@@ -58,10 +60,12 @@ const makeSymlink = (dist: string, dest: string) => {
         fs.unlinkSync(dest);
       }
     }
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.symlinkSync(dist, dest, "junction");
     log("symlink created", true);
     return "created";
   } catch (e) {
+    console.log(e);
     log("symlink failed. Try running 'sudo yarn symlink'", false);
     return "error";
   }
@@ -117,10 +121,12 @@ interface CepOptions {
   dir: string;
   isProduction: boolean;
   isPackage: boolean;
+  isMetaPackage: boolean;
   debugReact: boolean;
   isServe: boolean;
   cepDist: string;
   zxpDir: string;
+  zipDir: string;
   packages: string[];
 }
 export const cep = (opts: CepOptions) => {
@@ -129,10 +135,12 @@ export const cep = (opts: CepOptions) => {
     dir,
     isProduction,
     isPackage,
+    isMetaPackage,
     isServe,
     debugReact,
     cepDist,
     zxpDir,
+    zipDir,
     packages,
   } = opts;
 
@@ -302,7 +310,7 @@ export const cep = (opts: CepOptions) => {
         });
       }
     },
-    writeBundle() {
+    async writeBundle() {
       // console.log(" BUILD END");
       const root = "./";
       const src = "./src";
@@ -312,15 +320,29 @@ export const cep = (opts: CepOptions) => {
       copyModules({ packages: allPackages, src: root, dest, symlink });
       if (cepConfig.copyAssets) {
         copyFiles({
-          src,
-          dest,
+          src: path.join(process.cwd(), src),
+          dest: path.join(process.cwd(), dest),
           assets: cepConfig.copyAssets,
         });
       }
 
       // console.log("FINISH");
       if (isPackage) {
-        return signZXP(cepConfig, path.join(dir, cepDist), zxpDir, tmpDir);
+        const zxpPath = await signZXP(
+          cepConfig,
+          path.join(dir, cepDist),
+          zxpDir,
+          tmpDir
+        );
+        if (isMetaPackage) {
+          await metaPackage(
+            cepConfig,
+            zipDir,
+            zxpPath,
+            src,
+            cepConfig.copyZipAssets
+          );
+        }
       }
     },
     async generateBundle(output: any, bundle: any) {
@@ -343,6 +365,7 @@ export const cep = (opts: CepOptions) => {
               autoVisible: newProps.autoVisible,
               mainPath: newProps.mainPath,
               type: newProps.type,
+              host: newProps.host,
               panelDisplayName: newProps.panelDisplayName,
               width: newProps.width,
               height: newProps.height,
@@ -611,6 +634,9 @@ export const runAction = (opts: CepOptions, action: string) => {
     makeSymlink(symlinkSrc, symlinkDst);
   } else if (action === "delsymlink") {
     removeSymlink(symlinkSrc, symlinkDst);
+  } else if (action === "dependencyCheck") {
+    console.log("Checking Dependencies");
+    packageSync();
   } else {
     console.warn(`Unknown Action: ${action}`);
   }
