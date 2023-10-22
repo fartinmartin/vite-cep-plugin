@@ -1,4 +1,4 @@
-import type { CEP_Extended_Panel } from "../cep-config";
+import type { CEP_Extended_Panel } from "../types/cep-config";
 
 export const extensionTemplate = ({
   id,
@@ -42,7 +42,7 @@ export const extensionTemplate = ({
       .map((event) => `\n<Event>${event}</Event>`)
       .join("")}</StartOn>`) ||
   ""
-} 
+}
   </Lifecycle>
   <UI>
     <Type>${type}</Type>

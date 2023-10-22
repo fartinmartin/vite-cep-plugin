@@ -1,4 +1,4 @@
-import type { CEP_Config_Extended } from "../cep-config";
+import type { CEP_Config_Extended } from "../types/cep-config";
 import { extensionTemplate } from "./extension-template";
 export const manifestTemplate = (props: CEP_Config_Extended) => {
   const {
@@ -15,10 +15,10 @@ export const manifestTemplate = (props: CEP_Config_Extended) => {
     standalone ? "yes" : "no"
   }"?>
 <ExtensionManifest
-    Version="${extensionManifestVersion.toFixed(1)}" 
+    Version="${extensionManifestVersion.toFixed(1)}"
     ExtensionBundleId="${id}"
     ExtensionBundleVersion="${version}"
-    ExtensionBundleName="${displayName}" 
+    ExtensionBundleName="${displayName}"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   >
   <ExtensionList>

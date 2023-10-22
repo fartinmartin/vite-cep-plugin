@@ -1,7 +1,7 @@
 // For more details on Manifest Preferences see:
 // https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_11.x/Documentation/CEP%2011.1%20HTML%20Extension%20Cookbook.md
 
-type CEP_Host_Name =
+export type CEP_Host_Name =
   | "PHSP"
   | "PHXS"
   | "IDSN"
@@ -21,14 +21,14 @@ type CEP_Host_Name =
   | "BRDG"
   | "RUSH";
 
-type CEP_Host = {
+export type CEP_Host = {
   name: CEP_Host_Name;
   version: string;
 };
 
 export type JSXBIN_MODE = "off" | "copy" | "replace";
 
-type CEF_Command =
+export type CEF_Command =
   | "--enable-media-stream"
   | "--enable-speech-input"
   | "--enable-file-cookies"
@@ -55,7 +55,7 @@ type CEF_Command =
   | "--v=4"
   | "--v=5";
 
-type CEP_Panel_Type =
+export type CEP_Panel_Type =
   | "Panel"
   | "ModalDialog"
   | "Modeless"
@@ -139,4 +139,18 @@ export interface CEP_Config {
 
 export interface CEP_Config_Extended extends CEP_Config {
   panels: CEP_Extended_Panel[];
+}
+
+export interface CepOptions {
+  cepConfig: CEP_Config;
+  dir: string;
+  isProduction: boolean;
+  isPackage: boolean;
+  isMetaPackage: boolean;
+  debugReact: boolean;
+  isServe: boolean;
+  cepDist: string;
+  zxpDir: string;
+  zipDir: string;
+  packages: string[];
 }

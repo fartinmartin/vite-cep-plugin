@@ -3,8 +3,8 @@ import * as path from "path";
 import * as child_process from "child_process";
 const { execSync } = child_process;
 
-import { removeIfExists, safeCreate, log, pause } from "./lib";
-import { CEP_Config } from "../cep-config";
+import { removeIfExists, safeCreate, log, pause } from "../utils/lib";
+import { CEP_Config } from "../../types/cep-config";
 import { existsSync, readdirSync } from "fs";
 
 export const signZXP = async (

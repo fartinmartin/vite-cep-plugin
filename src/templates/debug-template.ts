@@ -1,4 +1,4 @@
-import type { CEP_Config_Extended } from "../cep-config";
+import type { CEP_Config_Extended } from "../types/cep-config";
 
 export const debugTemplate = (props: CEP_Config_Extended) => {
   const { id, hosts, startingDebugPort, panels } = props;
