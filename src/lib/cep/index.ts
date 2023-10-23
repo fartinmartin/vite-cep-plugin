@@ -26,7 +26,7 @@ export function cep(opts: CepOptions) {
   return {
     name: "cep",
     transformIndexHtml: createTransformIndexHtml(opts, foundPackages),
-    configResolved: createConfigResolved(),
+    configResolved: createConfigResolved(opts),
     writeBundle: createWriteBundle(opts, foundPackages),
     generateBundle: createGenerateBundle(opts),
   };
