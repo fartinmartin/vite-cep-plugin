@@ -13,7 +13,8 @@ export function cep(opts: CepOptions) {
 
     cepConfig.panels.map((panel) => {
       const name = panel.name;
-      const message = `${conColors.white}   > ${name}: ${conColors.cyan}http://localhost:${cepConfig.servePort}/${name}/`;
+      const port = cepConfig.serverConfig.servePort;
+      const message = `${conColors.white}   > ${name}: ${conColors.cyan}http://localhost:${port}/${name}/`;
       console.log(message);
     });
 
@@ -26,7 +27,7 @@ export function cep(opts: CepOptions) {
   return {
     name: "cep",
     transformIndexHtml: createTransformIndexHtml(opts, foundPackages),
-    configResolved: createConfigResolved(),
+    configResolved: createConfigResolved(opts),
     writeBundle: createWriteBundle(opts, foundPackages),
     generateBundle: createGenerateBundle(opts),
   };

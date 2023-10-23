@@ -1,9 +1,10 @@
 import * as path from "path";
 import * as fs from "fs-extra";
 import { JSXBIN_MODE } from "../../types/cep-config";
+import { tmpDir } from "../utils";
 const jsxbin = require("jsxbin");
 
-export const jsxBin = (tmpDir: string, jsxBinMode?: JSXBIN_MODE) => {
+export const jsxBin = (jsxBinMode?: JSXBIN_MODE) => {
   return {
     name: "extendscript-jsxbin",
     generateBundle: async function (output: any, bundle: any) {

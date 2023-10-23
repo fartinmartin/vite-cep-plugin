@@ -1,7 +1,11 @@
 import * as path from "path";
 
 import { CepOptions } from "../..";
-import { CEP_Config, CEP_Config_Extended } from "../../types/cep-config";
+import {
+  CEP_Config,
+  CEP_Config_Extended,
+  CEP_Extended_Panel,
+} from "../../types/cep-config";
 
 import { manifestTemplate } from "../../templates/manifest-template";
 import { debugTemplate } from "../../templates/debug-template";
@@ -18,9 +22,10 @@ import { ccExtensionDir } from "../utils";
 
 import { makeSymlink } from "../symlink/make-symlink";
 import { tmpDir } from "../utils/tmp-dir";
+
 const prettifyXml = require("prettify-xml");
 
-export async function createWriteBundle(
+export function createWriteBundle(
   {
     cepConfig,
     dir,
@@ -45,11 +50,11 @@ export async function createWriteBundle(
 
     copyModules({ packages: allPackages, src: root, dest, symlink });
 
-    if (cepConfig.copyAssets) {
+    if (cepConfig.bundle?.copy) {
       copyFiles({
         src: path.join(process.cwd(), src),
         dest: path.join(process.cwd(), dest),
-        assets: cepConfig.copyAssets,
+        assets: cepConfig.bundle.copy,
       });
     }
 
@@ -67,7 +72,7 @@ export async function createWriteBundle(
           zipDir,
           zxpPath,
           src,
-          cepConfig.copyZipAssets
+          cepConfig.bundle?.zip
         );
       }
     }
@@ -111,35 +116,34 @@ export function createGenerateBundle({
 
 // Fill any empty panel fields with extension's defaults
 function fillPanelFields(config: CEP_Config) {
-  let newConfig: CEP_Config_Extended = {
-    ...config,
-    panels: config.panels.map((panel) => {
-      let newProps: any = { ...config, ...panel };
-      return {
-        id: panel.id ? panel.id : `${config.id}.${panel.name}`,
-        name: newProps.name,
-        parameters: newProps.parameters,
-        autoVisible: newProps.autoVisible,
-        mainPath: newProps.mainPath,
-        type: newProps.type,
-        host: newProps.host,
-        panelDisplayName: newProps.panelDisplayName,
-        width: newProps.width,
-        height: newProps.height,
-        minWidth: newProps.minWidth,
-        minHeight: newProps.minHeight,
-        maxWidth: newProps.maxWidth,
-        maxHeight: newProps.maxHeight,
-        iconNormal: newProps.iconNormal,
-        iconDarkNormal: newProps.iconDarkNormal,
-        iconNormalRollOver: newProps.iconNormalRollOver,
-        iconDarkNormalRollOver: newProps.iconDarkNormalRollOver,
-        scriptPath: newProps.scriptPath,
-        startOnEvents: newProps.startOnEvents,
-      };
-    }),
-  };
-  return newConfig;
+  const newPanels: CEP_Extended_Panel[] = config.panels.map((panel) => {
+    return {
+      name: panel.name ?? `${config.id}.${panel.name}`,
+      displayName: panel.displayName ?? config.displayName,
+
+      mainPath: panel.mainPath, // ?? config.mainPath,
+      scriptPath: panel.scriptPath ?? config.scriptPath,
+
+      id: panel.id ?? config.id,
+      parameters: panel.parameters ?? config.parameters,
+      type: panel.type ?? config.type,
+
+      host: panel.host, // ?? config.host,
+      startOnEvents: panel.startOnEvents, // ?? config.startOnEvents,
+
+      window: {
+        ...config.window,
+        ...panel.window,
+      },
+
+      icons: {
+        ...config.icons,
+        ...panel.icons,
+      },
+    } satisfies CEP_Extended_Panel;
+  });
+
+  return { ...config, panels: newPanels };
 }
 
 function handleDebugFile(this: any, extendedConfig: CEP_Config_Extended) {

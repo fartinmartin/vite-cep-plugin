@@ -6,9 +6,8 @@ import {
   removeModuleTags,
 } from "../utils/lib";
 import type { HtmlTagDescriptor } from "vite";
-import { nodeBuiltIns } from "../utils/node-built-ins";
+import { nodeBuiltIns, injectRequire } from "../utils";
 import { CepOptions } from "../..";
-import { injectRequire } from "../utils/require";
 
 export function createTransformIndexHtml(
   { debugReact }: CepOptions,

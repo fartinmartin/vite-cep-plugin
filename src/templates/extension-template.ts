@@ -2,51 +2,52 @@ import type { CEP_Extended_Panel } from "../types/cep-config";
 
 export const extensionTemplate = ({
   id,
-  name,
   parameters,
-  autoVisible,
   mainPath,
   type,
   host,
-  panelDisplayName,
-  width,
-  height,
-  minWidth,
-  minHeight,
-  maxWidth,
-  maxHeight,
-  iconNormal,
-  iconDarkNormal,
-  iconNormalRollOver,
-  iconDarkNormalRollOver,
+  displayName,
+  window,
+  icons,
   scriptPath,
   startOnEvents,
-}: CEP_Extended_Panel) => `<Extension Id="${id}">
+}: CEP_Extended_Panel) => {
+  const {
+    autoVisible,
+    height,
+    maxHeight,
+    maxWidth,
+    minHeight,
+    minWidth,
+    width,
+  } = window;
+  const { darkNormal, darkNormalRollOver, normal, normalRollOver } = icons;
+  return `<Extension Id="${id}">
 <DispatchInfo${host ? ` Host="${host}"` : ""}>
   <Resources>
     <MainPath>${mainPath}</MainPath>${
-  (scriptPath && `<ScriptPath>${scriptPath}</ScriptPath>`) || ""
-}<CEFCommandLine>${
-  (parameters &&
-    parameters
-      .map((item) => `\n<Parameter>${item.toString()}</Parameter>`)
-      .join("")) ||
-  ""
-}
+    (scriptPath && `<ScriptPath>${scriptPath}</ScriptPath>`) || ""
+  }<CEFCommandLine>${
+    (parameters &&
+      parameters
+        .map((item) => `\n<Parameter>${item.toString()}</Parameter>`)
+        .join("")) ||
+    ""
+  }
     </CEFCommandLine>
   </Resources>
   <Lifecycle>
     <AutoVisible>${autoVisible}</AutoVisible>${
-  (startOnEvents &&
-    `<StartOn>${startOnEvents
-      .map((event) => `\n<Event>${event}</Event>`)
-      .join("")}</StartOn>`) ||
-  ""
-}
+    (startOnEvents &&
+      `<StartOn>${startOnEvents
+        .map((event) => `\n<Event>${event}</Event>`)
+        .join("")}</StartOn>`) ||
+    ""
+  }
   </Lifecycle>
   <UI>
     <Type>${type}</Type>
-    ${panelDisplayName ? `<Menu>${panelDisplayName}</Menu>` : ""}
+    ${displayName ? `<Menu>${displayName}</Menu>` : ""}
     <Geometry>${
       width && height
         ? `<Size>
@@ -55,27 +56,28 @@ export const extensionTemplate = ({
       </Size>`
         : ""
     }${
-  maxWidth && maxHeight
-    ? `<MaxSize>
+    maxWidth && maxHeight
+      ? `<MaxSize>
         <Width>${maxWidth}</Width>
         <Height>${maxHeight}</Height>
       </MaxSize>`
-    : ""
-}${
-  minWidth && minHeight
-    ? `<MinSize>
+      : ""
+  }${
+    minWidth && minHeight
+      ? `<MinSize>
         <Width>${minWidth}</Width>
         <Height>${minHeight}</Height>
       </MinSize>`
-    : ""
-}</Geometry>
+      : ""
+  }</Geometry>
     <Icons>
-      <Icon Type="Normal">${iconNormal}</Icon>
-      <Icon Type="DarkNormal">${iconDarkNormal}</Icon>
-      <Icon Type="RollOver">${iconNormalRollOver}</Icon>
-      <Icon Type="DarkRollOver">${iconDarkNormalRollOver}</Icon>
+      <Icon Type="Normal">${normal}</Icon>
+      <Icon Type="DarkNormal">${darkNormal}</Icon>
+      <Icon Type="RollOver">${normalRollOver}</Icon>
+      <Icon Type="DarkRollOver">${darkNormalRollOver}</Icon>
     </Icons>
   </UI>
 </DispatchInfo>
 </Extension>
 `;
+};

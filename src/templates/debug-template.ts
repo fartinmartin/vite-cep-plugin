@@ -1,8 +1,8 @@
 import type { CEP_Config_Extended } from "../types/cep-config";
 
 export const debugTemplate = (props: CEP_Config_Extended) => {
-  const { id, hosts, startingDebugPort, panels } = props;
-  let port = startingDebugPort;
+  const { hosts, serverConfig, panels } = props;
+  let port = serverConfig.startingDebugPort;
   return `
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionList>${panels
