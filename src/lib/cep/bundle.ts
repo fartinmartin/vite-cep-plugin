@@ -20,7 +20,7 @@ import { makeSymlink } from "../symlink/make-symlink";
 import { tmpDir } from "../utils/tmp-dir";
 const prettifyXml = require("prettify-xml");
 
-export async function createWriteBundle(
+export function createWriteBundle(
   {
     cepConfig,
     dir,
